@@ -19,6 +19,8 @@ const C = {
     tempPlanning: "Planning",
     tempPlanTitle: "Essential a Suprema",
     tempDirections: "Indicazioni",
+    marcoInfo: "Per informazioni",
+    whatsapp: "Scrivi su WhatsApp",
     schedule: [
       {
         day: "lun.",
@@ -82,6 +84,8 @@ const C = {
     mapN: "La mappa esterna viene caricata solo con il tuo consenso.",
     dir: "Apri in Google Maps",
     form: "Inizia da qui.",
+    contactText:
+      "Scrivici oppure parla direttamente con Marco per conoscere attività, percorsi e modalità di accesso a Beat Studio Gubbio.",
     fields: [
       "Nome e cognome",
       "Email",
@@ -108,6 +112,8 @@ const C = {
     tempPlanning: "Schedule",
     tempPlanTitle: "Essential at Suprema",
     tempDirections: "Directions",
+    marcoInfo: "For information",
+    whatsapp: "Message on WhatsApp",
     schedule: [
       {
         day: "Mon.",
@@ -171,6 +177,8 @@ const C = {
     mapN: "The external map loads only with your consent.",
     dir: "Open in Google Maps",
     form: "Start here.",
+    contactText:
+      "Write to us or speak directly with Marco to discover Beat Studio Gubbio activities, programmes and how to join.",
     fields: ["Full name", "Email", "Phone (optional)", "How can we help?"],
     consent: "I confirm that I have read the",
     send: "Send request",
@@ -289,6 +297,22 @@ export default function Home() {
               <h3>{t.tempMonth}</h3>
               <p>{t.tempBody}</p>
               <strong>{t.tempClaim}</strong>
+              <div className="marcoCard temporaryMarco">
+                <div>
+                  <span>{t.marcoInfo}</span>
+                  <a className="marcoPhone" href="tel:+393476902521">
+                    Marco · +39 347 690 2521
+                  </a>
+                </div>
+                <a
+                  className="whatsappButton"
+                  href="https://wa.me/393476902521"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {t.whatsapp} <span aria-hidden="true">↗</span>
+                </a>
+              </div>
             </div>
           </div>
 
@@ -451,6 +475,23 @@ export default function Home() {
         <div>
           <p className="index">06 — CONTACT</p>
           <h2>{t.form}</h2>
+          <p className="contactText">{t.contactText}</p>
+          <div className="marcoCard contactMarco">
+            <div>
+              <span>{t.marcoInfo}</span>
+              <a className="marcoPhone" href="tel:+393476902521">
+                Marco · +39 347 690 2521
+              </a>
+            </div>
+            <a
+              className="whatsappButton"
+              href="https://wa.me/393476902521"
+              target="_blank"
+              rel="noreferrer"
+            >
+              {t.whatsapp} <span aria-hidden="true">↗</span>
+            </a>
+          </div>
         </div>
         <form
           action={atob(
