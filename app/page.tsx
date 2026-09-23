@@ -197,24 +197,94 @@ const Lines = ({ s }: { s: string }) => (
   </>
 );
 
+type CookiePreference = {
+  version: 2;
+  externalMedia: boolean;
+  savedAt: number;
+};
+
+const COOKIE_KEY = "beat-cookie-consent";
+const COOKIE_MAX_AGE = 180 * 24 * 60 * 60 * 1000;
+
+const readCookiePreference = (): CookiePreference | null => {
+  const raw = localStorage.getItem(COOKIE_KEY);
+  if (!raw) return null;
+
+  if (raw === "all" || raw === "essential") {
+    const migrated: CookiePreference = {
+      version: 2,
+      externalMedia: raw === "all",
+      savedAt: Date.now(),
+    };
+    localStorage.setItem(COOKIE_KEY, JSON.stringify(migrated));
+    return migrated;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as CookiePreference;
+    if (
+      parsed.version !== 2 ||
+      typeof parsed.externalMedia !== "boolean" ||
+      typeof parsed.savedAt !== "number" ||
+      Date.now() - parsed.savedAt > COOKIE_MAX_AGE
+    ) {
+      localStorage.removeItem(COOKIE_KEY);
+      return null;
+    }
+    return parsed;
+  } catch {
+    localStorage.removeItem(COOKIE_KEY);
+    return null;
+  }
+};
+
 export default function Home() {
   const [lang, setLang] = useState<"it" | "en">("it");
   const [menu, setMenu] = useState(false);
-  const [map, setMap] = useState(false);
   const [cur, setCur] = useState({ x: -500, y: -500 });
-  const [cookie, setCookie] = useState<string | null>(null);
+  const [cookie, setCookie] = useState<CookiePreference | null>(null);
+  const [cookieReady, setCookieReady] = useState(false);
+  const [cookieOpen, setCookieOpen] = useState(false);
+  const [cookieDetails, setCookieDetails] = useState(false);
+  const [draftExternalMedia, setDraftExternalMedia] = useState(false);
   const t = C[lang];
 
   useEffect(() => {
     const f = (e: MouseEvent) => setCur({ x: e.clientX, y: e.clientY });
     addEventListener("mousemove", f);
-    setCookie(localStorage.getItem("beat-cookie-consent"));
+    const savedCookie = readCookiePreference();
+    setCookie(savedCookie);
+    setDraftExternalMedia(savedCookie?.externalMedia ?? false);
+    setCookieOpen(savedCookie === null);
+    setCookieReady(true);
     return () => removeEventListener("mousemove", f);
   }, []);
 
-  const chooseCookie = (value: string) => {
-    localStorage.setItem("beat-cookie-consent", value);
+  const chooseCookie = (externalMedia: boolean) => {
+    const value: CookiePreference = {
+      version: 2,
+      externalMedia,
+      savedAt: Date.now(),
+    };
+    localStorage.setItem(COOKIE_KEY, JSON.stringify(value));
     setCookie(value);
+    setDraftExternalMedia(externalMedia);
+    setCookieOpen(false);
+    setCookieDetails(false);
+  };
+
+  const openCookiePreferences = () => {
+    setDraftExternalMedia(cookie?.externalMedia ?? false);
+    setCookieDetails(true);
+    setCookieOpen(true);
+  };
+
+  const closeCookiePreferences = () => {
+    if (cookie === null) chooseCookie(false);
+    else {
+      setCookieOpen(false);
+      setCookieDetails(false);
+    }
   };
 
   const navIds = ["temporary", "vision", "experiences", "method", "location"];
@@ -440,14 +510,14 @@ export default function Home() {
 
       <section id="location" className="split location">
         <div className="map">
-          {map ? (
+          {cookie?.externalMedia ? (
             <iframe
               title="Google map Beat Studio"
               src="https://www.google.com/maps?q=Via+della+Piaggiola+152,+06024+Gubbio+PG&output=embed"
               loading="lazy"
             />
           ) : (
-            <button onClick={() => setMap(true)}>
+            <button onClick={openCookiePreferences}>
               <strong>{t.map}</strong>
               <small>{t.mapN}</small>
             </button>
@@ -551,23 +621,35 @@ export default function Home() {
 
       <footer>
         <img src="/assets/logo.png" alt="Beat Studio" />
-        <div>
-          <a href="/privacy-cookie-policy.html">Privacy & Cookie Policy</a>
-          <p>© 2026 Beat Studio Gubbio</p>
+        <div className="footerLegal">
+          <strong>ASD Spinningubbio</strong>
+          <p>Via del Rovo 14 · 06024 Gubbio (PG)</p>
+          <p>
+            P. IVA 03233700545 ·{" "}
+            <a href="mailto:beatstudio.gubbio@gmail.com">
+              beatstudio.gubbio@gmail.com
+            </a>
+          </p>
+          <div className="footerLinks">
+            <a href="/privacy-cookie-policy.html">Privacy & Cookie Policy</a>
+            <button type="button" onClick={openCookiePreferences}>
+              {lang === "it" ? "Gestisci cookie" : "Manage cookies"}
+            </button>
+          </div>
+          <p>© 2026 ASD Spinningubbio</p>
         </div>
         <p>DIAMO RITMO AL TUO BENESSERE.</p>
       </footer>
 
-      {cookie === null && (
+      {cookieReady && cookieOpen && (
         <aside
           className="cookie-banner"
           role="dialog"
-          aria-modal="true"
           aria-label={lang === "it" ? "Preferenze cookie" : "Cookie preferences"}
         >
           <button
             className="cookie-x"
-            onClick={() => chooseCookie("essential")}
+            onClick={closeCookiePreferences}
             aria-label={lang === "it" ? "Chiudi" : "Close"}
           >
             ×
@@ -584,16 +666,64 @@ export default function Home() {
                 : "We use necessary technical cookies and, only with your consent, external services to improve navigation. You can accept all services or continue with necessary cookies only."}
             </p>
             <a href="/privacy-cookie-policy.html">Privacy & Cookie Policy</a>
+            {cookieDetails && (
+              <div className="cookie-preferences">
+                <div className="cookie-option">
+                  <div>
+                    <strong>
+                      {lang === "it" ? "Cookie necessari" : "Necessary cookies"}
+                    </strong>
+                    <p>
+                      {lang === "it"
+                        ? "Memorizzano lingua e preferenze del consenso. Sono sempre attivi."
+                        : "They store language and consent preferences. They are always active."}
+                    </p>
+                  </div>
+                  <input type="checkbox" checked disabled aria-label="Cookie necessari" />
+                </div>
+                <label className="cookie-option">
+                  <div>
+                    <strong>
+                      {lang === "it" ? "Servizi esterni" : "External services"}
+                    </strong>
+                    <p>
+                      {lang === "it"
+                        ? "Consente il caricamento della mappa Google Maps."
+                        : "Allows the Google Maps map to load."}
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={draftExternalMedia}
+                    onChange={(event) => setDraftExternalMedia(event.target.checked)}
+                    aria-label={lang === "it" ? "Consenti servizi esterni" : "Allow external services"}
+                  />
+                </label>
+              </div>
+            )}
           </div>
           <div className="cookie-actions">
-            <button onClick={() => chooseCookie("essential")}>
-              {lang === "it"
-                ? "Continua senza accettare"
-                : "Continue without accepting"}
+            <button onClick={() => chooseCookie(false)}>
+              {lang === "it" ? "Rifiuta non necessari" : "Reject non-essential"}
             </button>
+            {cookieDetails ? (
+              <button
+                className="cookie-save"
+                onClick={() => chooseCookie(draftExternalMedia)}
+              >
+                {lang === "it" ? "Salva preferenze" : "Save preferences"}
+              </button>
+            ) : (
+              <button
+                className="cookie-manage"
+                onClick={() => setCookieDetails(true)}
+              >
+                {lang === "it" ? "Gestisci preferenze" : "Manage preferences"}
+              </button>
+            )}
             <button
               className="cookie-accept"
-              onClick={() => chooseCookie("all")}
+              onClick={() => chooseCookie(true)}
             >
               {lang === "it" ? "Accetta tutti" : "Accept all"}
             </button>
